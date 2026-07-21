@@ -18,6 +18,7 @@ export default function SettingsPage() {
   const [message, setMessage] = useState<string | null>(null);
 
   const [lanUrl, setLanUrl] = useState<string | null>(null);
+  const [alternateUrls, setAlternateUrls] = useState<string[]>([]);
 
   const [pinConfigured, setPinConfigured] = useState<boolean | null>(null);
   const [currentPin, setCurrentPin] = useState("");
@@ -38,7 +39,10 @@ export default function SettingsPage() {
     loadPinStatus();
     fetch("/api/network-info")
       .then((r) => r.json())
-      .then((d) => setLanUrl(d.lanUrl));
+      .then((d) => {
+        setLanUrl(d.lanUrl);
+        setAlternateUrls(d.alternateUrls ?? []);
+      });
   }, []);
 
   useEffect(() => {
@@ -152,6 +156,23 @@ export default function SettingsPage() {
               With your phone on the same WiFi as this computer, open:
             </p>
             <p className="rounded-lg bg-surface-raised px-3 py-2 font-mono text-sm break-all">{lanUrl}</p>
+            {alternateUrls.length > 0 && (
+              <div className="mt-3">
+                <p className="text-xs text-muted mb-1">
+                  If that doesn&apos;t load, this computer has more than one network connection — try:
+                </p>
+                <div className="flex flex-col gap-1.5">
+                  {alternateUrls.map((url) => (
+                    <p
+                      key={url}
+                      className="rounded-lg bg-surface-raised px-3 py-2 font-mono text-sm break-all"
+                    >
+                      {url}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
           </>
         ) : (
           <p className="text-sm text-muted">No network connection detected.</p>
