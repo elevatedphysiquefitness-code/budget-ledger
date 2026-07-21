@@ -1,0 +1,38 @@
+{
+  "bills": [
+    { "name": "Rent", "amount": 1200, "day": 1, "paid": false },
+    { "name": "Credit Card A", "amount": 120, "day": 12, "paid": false },
+    { "name": "Auto Loan", "amount": 350, "day": 16, "paid": false },
+    { "name": "Credit Card B", "amount": 80, "day": 20, "paid": true },
+    { "name": "Car Insurance", "amount": 95, "day": null, "paid": false }
+  ],
+  "cards": [
+    { "name": "Credit Card A", "balance": 2500, "limit": 5000, "apr": 19.99 },
+    { "name": "Credit Card B", "balance": 800, "limit": 2000, "apr": 22.99 }
+  ],
+  "allocation": {
+    "savings": 200,
+    "food": 400,
+    "hobbies": 100,
+    "other": 100,
+    "extraTowardDebt": 300,
+    "savingsApy": 4.00
+  },
+  "income": {
+    "hourlyRate": 25.00,
+    "payFrequency": "biweekly",
+    "netPerFullPaycheck": 1800.00,
+    "monthlyAverageNet": 3600.00,
+    "federalWithholding": "standard",
+    "nextPayDate": "2026-08-01",
+    "payIntervalDays": 14
+  },
+  "startingBalance": 500.00,
+  "transactions": [
+    { "date": "2026-07-01", "desc": "Paycheck Deposit", "amount": 1800.00 },
+    { "date": "2026-07-02", "desc": "Grocery Store", "amount": -85.32 },
+    { "date": "2026-07-03", "desc": "Gas Station", "amount": -45.00 },
+    { "date": "2026-07-05", "desc": "Coffee Shop", "amount": -6.50 }
+  ],
+  "currentAccountBalance": 2163.18
+}

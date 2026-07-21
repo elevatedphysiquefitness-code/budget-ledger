@@ -6,14 +6,18 @@ for local persistence, optional read-only Plaid bank sync.
 
 ## Setup
 
+This is a template — clone it and run your own private instance with your own data. Nobody else
+sees your numbers; there's no shared server or account system.
+
 ```bash
 npm install
-npm run seed      # imports budget-data-export.json on first run automatically anyway
+cp budget-data-export.example.json budget-data-export.json   # then edit in your own numbers
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000). The database lives at `data/budget-ledger.db`
 and is seeded automatically from `budget-data-export.json` the first time it's created.
+`budget-data-export.json` is gitignored — it's meant to stay local, never committed.
 
 ## Connecting a bank account (optional)
 
