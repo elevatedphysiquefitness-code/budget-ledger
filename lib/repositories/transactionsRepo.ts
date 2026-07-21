@@ -95,3 +95,31 @@ export function updateManualTransaction(
 export function deleteTransaction(id: number): void {
   db.prepare("DELETE FROM transactions WHERE id = ?").run(id);
 }
+
+/** Upserts a Plaid-synced transaction, keyed on plaid_transaction_id so
+ *  re-syncing (e.g. pending -> posted updates) never creates duplicates. */
+export function upsertPlaidTransaction(input: {
+  plaidTransactionId: string;
+  plaidAccountId: string;
+  date: string;
+  description: string;
+  amount: number;
+  category: string | null;
+  pending: boolean;
+}): void {
+  db.prepare(
+    `INSERT INTO transactions (date, description, amount, source, plaid_transaction_id, plaid_account_id, category, pending)
+     VALUES (@date, @description, @amount, 'plaid', @plaidTransactionId, @plaidAccountId, @category, @pending)
+     ON CONFLICT(plaid_transaction_id) DO UPDATE SET
+       date = excluded.date,
+       description = excluded.description,
+       amount = excluded.amount,
+       category = excluded.category,
+       pending = excluded.pending,
+       updated_at = datetime('now')`
+  ).run({ ...input, pending: input.pending ? 1 : 0 });
+}
+
+export function deleteByPlaidTransactionId(plaidTransactionId: string): void {
+  db.prepare("DELETE FROM transactions WHERE plaid_transaction_id = ?").run(plaidTransactionId);
+}

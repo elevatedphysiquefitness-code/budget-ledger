@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { listBills } from "@/lib/repositories/billsRepo";
 import { getPaySchedule } from "@/lib/repositories/incomeRepo";
-import { getSettingNumber } from "@/lib/repositories/settingsRepo";
+import { getCurrentBalance } from "@/lib/repositories/balanceRepo";
 import { forecastCashFlow } from "@/lib/computations/cashFlowForecast";
 
 const VALID_HORIZONS = [30, 60, 90] as const;
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
 
   const bills = listBills();
   const paySchedule = getPaySchedule();
-  const startingBalance = getSettingNumber("current_account_balance_manual_override", 0);
+  const { balance: startingBalance } = getCurrentBalance();
 
   const result = forecastCashFlow({
     startingBalance,
