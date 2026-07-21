@@ -10,11 +10,19 @@ from your phone too, but only over your own home WiFi (see below), never over th
 1. Double-click the file `Budget Ledger-<version>-arm64.dmg` to open it.
 2. Drag the **Budget Ledger** icon into the **Applications** folder shown in the window.
 3. Open your **Applications** folder and double-click **Budget Ledger**.
-4. You'll see a warning that says the app is from an "unidentified developer" — this is
-   normal for apps not distributed through the Mac App Store. To open it anyway:
-   - Right-click (or Control-click) the **Budget Ledger** app icon and choose **Open**.
-   - Click **Open** again in the dialog that appears.
-   - You only need to do this once — after that it opens normally.
+4. You'll see a warning — either "unidentified developer" or, on newer macOS, **"Apple
+   could not verify 'Budget Ledger' is free of malware."** This is normal for any app not
+   distributed through the Mac App Store (it's not actually a malware detection — Apple
+   shows this for every app it hasn't individually reviewed), but which exact warning you
+   get changes how you get past it:
+   - **First, try:** Right-click (or Control-click) the **Budget Ledger** app icon → **Open**
+     → **Open** again in the dialog. On many macOS versions this is all it takes, and you
+     only need to do it once.
+   - **If that dialog only offers "Done" or "Move to Trash"** (no Open option — common on
+     newer macOS): open **System Settings → Privacy & Security**, scroll down near the
+     bottom, and you'll see a line about **"Budget Ledger" was blocked**. Click **Open
+     Anyway**, then confirm once more (may ask for your password or Touch ID). Then try
+     opening the app again from Applications.
 5. macOS may also ask "Do you want the application 'Budget Ledger' to accept incoming
    network connections?" — click **Allow**. This is what lets you open the app from your
    phone (see below); it's not needed if you'll only ever use it on this computer.
