@@ -1,4 +1,4 @@
-import { db } from "@/db/client";
+import { getDb } from "@/db/client";
 import type { PlaidAccount, PlaidItem } from "@/types/domain";
 import { decryptSecret, encryptSecret } from "@/lib/crypto";
 
@@ -25,14 +25,14 @@ function rowToItem(row: PlaidItemRow): PlaidItem {
 
 /** Single-user app: at most one linked item is expected, so this returns the first. */
 export function getPlaidItem(): PlaidItem | undefined {
-  const row = db.prepare("SELECT * FROM plaid_item ORDER BY id LIMIT 1").get() as
+  const row = getDb().prepare("SELECT * FROM plaid_item ORDER BY id LIMIT 1").get() as
     | PlaidItemRow
     | undefined;
   return row ? rowToItem(row) : undefined;
 }
 
 export function getDecryptedAccessToken(): string | undefined {
-  const row = db.prepare("SELECT * FROM plaid_item ORDER BY id LIMIT 1").get() as
+  const row = getDb().prepare("SELECT * FROM plaid_item ORDER BY id LIMIT 1").get() as
     | PlaidItemRow
     | undefined;
   if (!row) return undefined;
@@ -49,7 +49,7 @@ export function savePlaidItem(input: {
   institutionName: string | null;
 }): PlaidItem {
   const encrypted = encryptSecret(input.accessToken);
-  db.prepare(
+  getDb().prepare(
     `INSERT INTO plaid_item (item_id, access_token_encrypted, iv, auth_tag, institution_name)
      VALUES (@itemId, @ciphertext, @iv, @authTag, @institutionName)
      ON CONFLICT(item_id) DO UPDATE SET
@@ -68,13 +68,13 @@ export function savePlaidItem(input: {
 }
 
 export function updateSyncState(itemId: string, cursor: string | null): void {
-  db.prepare(
+  getDb().prepare(
     "UPDATE plaid_item SET cursor = @cursor, last_synced_at = datetime('now') WHERE item_id = @itemId"
   ).run({ cursor, itemId });
 }
 
 export function deletePlaidItem(itemId: string): void {
-  db.prepare("DELETE FROM plaid_item WHERE item_id = ?").run(itemId);
+  getDb().prepare("DELETE FROM plaid_item WHERE item_id = ?").run(itemId);
 }
 
 interface AccountRow {
@@ -104,7 +104,7 @@ function rowToAccount(row: AccountRow): PlaidAccount {
 }
 
 export function listAccounts(): PlaidAccount[] {
-  const rows = db.prepare("SELECT * FROM accounts").all() as AccountRow[];
+  const rows = getDb().prepare("SELECT * FROM accounts").all() as AccountRow[];
   return rows.map(rowToAccount);
 }
 
@@ -118,7 +118,7 @@ export function upsertAccount(input: {
   currentBalance: number | null;
   availableBalance: number | null;
 }): void {
-  db.prepare(
+  getDb().prepare(
     `INSERT INTO accounts (plaid_item_id, plaid_account_id, name, official_name, type, subtype, current_balance, available_balance)
      VALUES (@plaidItemDbId, @plaidAccountId, @name, @officialName, @type, @subtype, @currentBalance, @availableBalance)
      ON CONFLICT(plaid_account_id) DO UPDATE SET

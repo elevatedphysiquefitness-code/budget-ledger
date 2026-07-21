@@ -163,6 +163,8 @@ function isEmpty(database: Database.Database): boolean {
 
 export function seedIfEmpty(database: Database.Database): void {
   if (!isEmpty(database)) return;
+  const seedPath = path.join(process.cwd(), "budget-data-export.json");
+  if (!fs.existsSync(seedPath)) return; // fresh install with no seed file: start empty, don't crash
   const data = readSeedFile();
   insertAll(database, data);
 }

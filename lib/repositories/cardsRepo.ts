@@ -1,4 +1,4 @@
-import { db } from "@/db/client";
+import { getDb } from "@/db/client";
 import type { Card } from "@/types/domain";
 
 interface CardRow {
@@ -14,12 +14,12 @@ function rowToCard(row: CardRow): Card {
 }
 
 export function listCards(): Card[] {
-  const rows = db.prepare("SELECT * FROM cards ORDER BY apr DESC, name").all() as CardRow[];
+  const rows = getDb().prepare("SELECT * FROM cards ORDER BY apr DESC, name").all() as CardRow[];
   return rows.map(rowToCard);
 }
 
 export function getCard(id: number): Card | undefined {
-  const row = db.prepare("SELECT * FROM cards WHERE id = ?").get(id) as CardRow | undefined;
+  const row = getDb().prepare("SELECT * FROM cards WHERE id = ?").get(id) as CardRow | undefined;
   return row ? rowToCard(row) : undefined;
 }
 
@@ -29,7 +29,7 @@ export function createCard(input: {
   creditLimit: number;
   apr: number;
 }): Card {
-  const result = db
+  const result = getDb()
     .prepare(
       "INSERT INTO cards (name, balance, credit_limit, apr) VALUES (@name, @balance, @creditLimit, @apr)"
     )
@@ -50,12 +50,12 @@ export function updateCard(
     creditLimit: input.creditLimit ?? existing.creditLimit,
     apr: input.apr ?? existing.apr,
   };
-  db.prepare(
+  getDb().prepare(
     "UPDATE cards SET name = @name, balance = @balance, credit_limit = @creditLimit, apr = @apr, updated_at = datetime('now') WHERE id = @id"
   ).run(merged);
   return getCard(id);
 }
 
 export function deleteCard(id: number): void {
-  db.prepare("DELETE FROM cards WHERE id = ?").run(id);
+  getDb().prepare("DELETE FROM cards WHERE id = ?").run(id);
 }

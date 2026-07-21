@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { seedIfEmpty } from "./seed";
 
-const DB_DIR = path.join(process.cwd(), "data");
+const DB_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), "data");
 const DB_PATH = path.join(DB_DIR, "budget-ledger.db");
 
 function createDb(): Database.Database {
@@ -24,10 +24,14 @@ declare global {
   var __budgetLedgerDb: Database.Database | undefined;
 }
 
-// Cache the connection on the global object so Next.js dev-mode module
-// reloading doesn't open a new handle to the same file on every request.
-export const db: Database.Database = globalThis.__budgetLedgerDb ?? createDb();
-
-if (process.env.NODE_ENV !== "production") {
-  globalThis.__budgetLedgerDb = db;
+// Lazy: the connection is only opened on first actual use, not just from
+// importing this module. Next.js executes route modules during build-time
+// page-data collection (across several parallel workers) purely to analyze
+// them — eagerly opening/seeding a real file there caused real file I/O
+// (and a multi-worker SQLITE_BUSY race) as a side effect of a build.
+export function getDb(): Database.Database {
+  if (!globalThis.__budgetLedgerDb) {
+    globalThis.__budgetLedgerDb = createDb();
+  }
+  return globalThis.__budgetLedgerDb;
 }

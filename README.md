@@ -42,6 +42,25 @@ money or make payments. See the Settings page for the full security notes on tok
 - `npm run test` — run the computation-module unit tests (vitest)
 - `npm run seed -- --force` — wipe and reseed the database from `budget-data-export.json`
 - `npm run gen-key` — print a new `ENCRYPTION_KEY`
+- `npm run dist:mac` / `npm run dist:win` — build a double-click desktop installer (see below)
+
+## Building a desktop app to share with someone non-technical
+
+`npm run dist:mac` and `npm run dist:win` package the whole app (server + SQLite + UI) into a
+standalone Electron desktop app — a `.dmg` for Mac or a `.exe` installer for Windows — that starts
+empty (no seed data) so the recipient fills in their own bills, cards, and pay schedule using the
+app's own screens. No terminal, no Node.js install, no GitHub account needed on their end.
+
+Installers land in `dist-electron/`. They're unsigned (no paid developer account needed), so the
+recipient will see a one-time "unknown developer" warning on first launch — send them
+`electron/RECIPIENT_README.md` alongside the installer, it walks through exactly what to click.
+
+Notes if you rebuild these yourself:
+- `better-sqlite3` is a native module; the build script rebuilds it for Electron's exact ABI
+  before packaging, and restores it back to a normal Node build afterward so `npm run dev` keeps
+  working. If `npm run dev` ever breaks after a `dist:*` build, run `npm rebuild better-sqlite3`.
+- The Windows build is cross-built from macOS. It's been verified to package a correct x64 binary,
+  but hasn't been run on an actual Windows machine — worth a smoke test before wide distribution.
 
 ## Stack
 

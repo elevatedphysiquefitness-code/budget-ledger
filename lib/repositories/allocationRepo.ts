@@ -1,4 +1,4 @@
-import { db } from "@/db/client";
+import { getDb } from "@/db/client";
 import type { AllocationTargets } from "@/types/domain";
 
 interface AllocationRow {
@@ -21,17 +21,37 @@ function rowToAllocation(row: AllocationRow): AllocationTargets {
   };
 }
 
+const DEFAULT_ALLOCATION: AllocationTargets = {
+  savings: 0,
+  food: 0,
+  hobbies: 0,
+  other: 0,
+  extraTowardDebt: 0,
+  savingsApy: 0,
+};
+
+/** On a fresh install there's no allocation_targets row yet — create a
+ *  zeroed default (editable immediately via the existing form) rather than
+ *  requiring every caller to handle "not configured yet" as a special case. */
 export function getAllocation(): AllocationTargets {
-  const row = db.prepare("SELECT * FROM allocation_targets WHERE id = 1").get() as AllocationRow;
+  const row = getDb().prepare("SELECT * FROM allocation_targets WHERE id = 1").get() as
+    | AllocationRow
+    | undefined;
+  if (!row) return updateAllocation(DEFAULT_ALLOCATION);
   return rowToAllocation(row);
 }
 
 export function updateAllocation(input: AllocationTargets): AllocationTargets {
-  db.prepare(
-    `UPDATE allocation_targets
-     SET savings = @savings, food = @food, hobbies = @hobbies, other = @other,
-         extra_toward_debt = @extraTowardDebt, savings_apy = @savingsApy, updated_at = datetime('now')
-     WHERE id = 1`
-  ).run(input);
-  return getAllocation();
+  getDb()
+    .prepare(
+      `INSERT INTO allocation_targets (id, savings, food, hobbies, other, extra_toward_debt, savings_apy)
+       VALUES (1, @savings, @food, @hobbies, @other, @extraTowardDebt, @savingsApy)
+       ON CONFLICT(id) DO UPDATE SET
+         savings = excluded.savings, food = excluded.food, hobbies = excluded.hobbies,
+         other = excluded.other, extra_toward_debt = excluded.extra_toward_debt,
+         savings_apy = excluded.savings_apy, updated_at = datetime('now')`
+    )
+    .run(input);
+  const row = getDb().prepare("SELECT * FROM allocation_targets WHERE id = 1").get() as AllocationRow;
+  return rowToAllocation(row);
 }

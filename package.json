@@ -2,6 +2,7 @@
   "name": "budget-ledger",
   "version": "0.1.0",
   "private": true,
+  "main": "electron/dist/main.js",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -9,7 +10,9 @@
     "lint": "eslint",
     "seed": "tsx db/seed-cli.ts",
     "gen-key": "tsx scripts/generate-encryption-key.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "dist:mac": "node scripts/build-electron.mjs --mac",
+    "dist:win": "node scripts/build-electron.mjs --win"
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1",
@@ -22,11 +25,14 @@
     "recharts": "^3.10.0"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.2.0",
     "@tailwindcss/postcss": "^4",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "electron": "^42.7.0",
+    "electron-builder": "^26.15.3",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
     "tailwindcss": "^4",

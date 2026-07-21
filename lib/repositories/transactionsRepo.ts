@@ -1,4 +1,4 @@
-import { db } from "@/db/client";
+import { getDb } from "@/db/client";
 import type { Transaction } from "@/types/domain";
 import { getSettingNumber } from "@/lib/repositories/settingsRepo";
 
@@ -35,7 +35,7 @@ export interface TransactionWithBalance extends Transaction {
 /** Most-recent-first, each annotated with its running balance computed forward
  *  from the starting_balance setting through chronological order. */
 export function listTransactionsWithRunningBalance(): TransactionWithBalance[] {
-  const rows = db
+  const rows = getDb()
     .prepare("SELECT * FROM transactions ORDER BY date ASC, id ASC")
     .all() as TransactionRow[];
   const transactions = rows.map(rowToTransaction);
@@ -50,7 +50,7 @@ export function listTransactionsWithRunningBalance(): TransactionWithBalance[] {
 }
 
 export function getTransaction(id: number): Transaction | undefined {
-  const row = db.prepare("SELECT * FROM transactions WHERE id = ?").get(id) as
+  const row = getDb().prepare("SELECT * FROM transactions WHERE id = ?").get(id) as
     | TransactionRow
     | undefined;
   return row ? rowToTransaction(row) : undefined;
@@ -61,7 +61,7 @@ export function createManualTransaction(input: {
   description: string;
   amount: number;
 }): Transaction {
-  const result = db
+  const result = getDb()
     .prepare(
       `INSERT INTO transactions (date, description, amount, source, plaid_transaction_id, plaid_account_id, category, pending)
        VALUES (@date, @description, @amount, 'manual', NULL, NULL, NULL, 0)`
@@ -84,7 +84,7 @@ export function updateManualTransaction(
     description: input.description ?? existing.description,
     amount: input.amount ?? existing.amount,
   };
-  db.prepare(
+  getDb().prepare(
     "UPDATE transactions SET date = @date, description = @description, amount = @amount, updated_at = datetime('now') WHERE id = @id"
   ).run(merged);
   return getTransaction(id);
@@ -93,7 +93,7 @@ export function updateManualTransaction(
 /** Delete is allowed regardless of source — an explicit user override, e.g. to
  *  remove a stale manual entry that Plaid later synced for real. */
 export function deleteTransaction(id: number): void {
-  db.prepare("DELETE FROM transactions WHERE id = ?").run(id);
+  getDb().prepare("DELETE FROM transactions WHERE id = ?").run(id);
 }
 
 /** Upserts a Plaid-synced transaction, keyed on plaid_transaction_id so
@@ -107,7 +107,7 @@ export function upsertPlaidTransaction(input: {
   category: string | null;
   pending: boolean;
 }): void {
-  db.prepare(
+  getDb().prepare(
     `INSERT INTO transactions (date, description, amount, source, plaid_transaction_id, plaid_account_id, category, pending)
      VALUES (@date, @description, @amount, 'plaid', @plaidTransactionId, @plaidAccountId, @category, @pending)
      ON CONFLICT(plaid_transaction_id) DO UPDATE SET
@@ -121,5 +121,5 @@ export function upsertPlaidTransaction(input: {
 }
 
 export function deleteByPlaidTransactionId(plaidTransactionId: string): void {
-  db.prepare("DELETE FROM transactions WHERE plaid_transaction_id = ?").run(plaidTransactionId);
+  getDb().prepare("DELETE FROM transactions WHERE plaid_transaction_id = ?").run(plaidTransactionId);
 }

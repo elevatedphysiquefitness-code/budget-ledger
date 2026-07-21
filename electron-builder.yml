@@ -1,0 +1,42 @@
+appId: com.budgetledger.desktop
+productName: Budget Ledger
+directories:
+  output: dist-electron
+# Only the tiny compiled main-process file is "app" content — everything the
+# server needs to run (its own trimmed, Electron-ABI-rebuilt node_modules,
+# static assets, schema) ships verbatim via extraResources below. Explicitly
+# excluding node_modules here stops electron-builder's default behavior of
+# auto-bundling the *whole project's* node_modules (built for system Node,
+# not Electron) into app.asar.
+files:
+  - "electron/dist/**/*"
+  - "package.json"
+  - "!node_modules"
+  - "!node_modules/**/*"
+extraResources:
+  # electron-builder hardcodes an unconditional exclusion for any directory
+  # that is *exactly* "node_modules" relative to `from` (see
+  # app-builder-lib/out/util/filter.js createFilter), which would silently
+  # drop .next/standalone/node_modules (the Electron-ABI-rebuilt copy this
+  # app actually runs) no matter what filter patterns are given. Pointing
+  # `from` one level up so node_modules is never the exact top-level entry
+  # sidesteps that hardcoded check entirely.
+  - from: ".next"
+    to: "."
+    filter:
+      - "standalone/**/*"
+      # Defense in depth: never ship personal data even if it somehow ended
+      # up in the standalone output (the build script also hard-fails on this).
+      - "!standalone/data/**"
+      - "!standalone/budget-data-export.json"
+      - "!standalone/budget-data-export.example.json"
+      - "!standalone/**/*.db"
+      - "!standalone/**/*.db-*"
+mac:
+  target: dmg
+  category: public.app-category.finance
+win:
+  target: nsis
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true

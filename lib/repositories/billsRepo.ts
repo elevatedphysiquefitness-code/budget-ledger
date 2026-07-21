@@ -1,4 +1,4 @@
-import { db } from "@/db/client";
+import { getDb } from "@/db/client";
 import type { Bill } from "@/types/domain";
 import { currentCycleKey, reconcileBillCycles } from "@/lib/computations/billingCycle";
 
@@ -24,7 +24,7 @@ function rowToBill(row: BillRow): Bill {
 
 /** Lists bills, auto-resetting any whose paid cycle has rolled over, persisting the diff. */
 export function listBills(): Bill[] {
-  const rows = db
+  const rows = getDb()
     .prepare("SELECT * FROM bills ORDER BY due_day IS NULL, due_day, name")
     .all() as BillRow[];
   const bills = rows.map(rowToBill);
@@ -32,10 +32,10 @@ export function listBills(): Bill[] {
   const changed = reconcileBillCycles(bills, new Date());
   if (changed.length === 0) return bills;
 
-  const update = db.prepare(
+  const update = getDb().prepare(
     "UPDATE bills SET paid = @paid, paid_cycle_key = @paidCycleKey, updated_at = datetime('now') WHERE id = @id"
   );
-  const run = db.transaction((items: Bill[]) => {
+  const run = getDb().transaction((items: Bill[]) => {
     for (const b of items) {
       update.run({ paid: b.paid ? 1 : 0, paidCycleKey: b.paidCycleKey, id: b.id });
     }
@@ -47,12 +47,12 @@ export function listBills(): Bill[] {
 }
 
 export function getBill(id: number): Bill | undefined {
-  const row = db.prepare("SELECT * FROM bills WHERE id = ?").get(id) as BillRow | undefined;
+  const row = getDb().prepare("SELECT * FROM bills WHERE id = ?").get(id) as BillRow | undefined;
   return row ? rowToBill(row) : undefined;
 }
 
 export function createBill(input: { name: string; amount: number; dueDay: number | null }): Bill {
-  const result = db
+  const result = getDb()
     .prepare(
       "INSERT INTO bills (name, amount, due_day, paid, paid_cycle_key) VALUES (@name, @amount, @dueDay, 0, NULL)"
     )
@@ -72,14 +72,14 @@ export function updateBill(
     amount: input.amount ?? existing.amount,
     dueDay: input.dueDay !== undefined ? input.dueDay : existing.dueDay,
   };
-  db.prepare(
+  getDb().prepare(
     "UPDATE bills SET name = @name, amount = @amount, due_day = @dueDay, updated_at = datetime('now') WHERE id = @id"
   ).run(merged);
   return getBill(id);
 }
 
 export function deleteBill(id: number): void {
-  db.prepare("DELETE FROM bills WHERE id = ?").run(id);
+  getDb().prepare("DELETE FROM bills WHERE id = ?").run(id);
 }
 
 export function toggleBillPaid(id: number): Bill | undefined {
@@ -87,12 +87,12 @@ export function toggleBillPaid(id: number): Bill | undefined {
   if (!existing) return undefined;
 
   if (existing.paid) {
-    db.prepare(
+    getDb().prepare(
       "UPDATE bills SET paid = 0, paid_cycle_key = NULL, updated_at = datetime('now') WHERE id = ?"
     ).run(id);
   } else {
     const cycleKey = existing.dueDay !== null ? currentCycleKey(existing.dueDay, new Date()) : null;
-    db.prepare(
+    getDb().prepare(
       "UPDATE bills SET paid = 1, paid_cycle_key = @cycleKey, updated_at = datetime('now') WHERE id = @id"
     ).run({ cycleKey, id });
   }
