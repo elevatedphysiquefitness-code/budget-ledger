@@ -10,7 +10,9 @@ export function currentCycleKey(dueDay: number, asOf: Date): string {
   const month = asOf.getMonth(); // 0-indexed
   const day = asOf.getDate();
 
-  const cycleMonth = day >= dueDay ? month + 1 : month;
+  // On the due date itself, we're still paying toward *this* cycle. The new
+  // cycle (collecting toward next month's due date) starts the day after.
+  const cycleMonth = day <= dueDay ? month : month + 1;
   const cycleDate = new Date(year, cycleMonth, 1);
   return `${cycleDate.getFullYear()}-${String(cycleDate.getMonth() + 1).padStart(2, "0")}`;
 }
