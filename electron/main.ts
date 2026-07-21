@@ -33,7 +33,10 @@ function startServer(): ChildProcess {
       ...process.env,
       ELECTRON_RUN_AS_NODE: "1",
       PORT: String(PORT),
-      HOSTNAME: "127.0.0.1",
+      // 0.0.0.0 so the app is reachable from other devices on the same WiFi
+      // (e.g. a phone). The Electron window itself still loads 127.0.0.1
+      // below — only the server's listen address changes.
+      HOSTNAME: "0.0.0.0",
       DATA_DIR: dataDir,
       NODE_ENV: "production",
     },

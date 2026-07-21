@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const standaloneDir = path.join(root, ".next", "standalone");
 const seedFilePath = path.join(root, "budget-data-export.json");
+const realDataDir = path.join(root, "data");
 const sqliteNativeBinary = path.join(
   standaloneDir,
   "node_modules",
@@ -41,13 +42,19 @@ console.log(`Building for target: ${target}`);
 
 // --- Build-time safety: db/client.ts opens the SQLite file at module-load
 // time, which Next's page-data collection can trigger for real during
-// `next build`. Make sure that can NEVER touch this machine's real personal
-// data (either the seed JSON or the real data/ directory) by moving the
-// seed file fully out of the project and pointing DATA_DIR at a throwaway
-// scratch directory for the duration of the build only.
+// `next build` — and pointing DATA_DIR at a scratch directory alone turned
+// out not to be enough (Turbopack appears to run some build-time work in a
+// process/worker that doesn't pick up the per-invocation env override, which
+// once produced a *real* data/ directory, with real rows, inside the
+// standalone output despite DATA_DIR being set). So in addition to that env
+// override, physically move both the real data/ directory and the seed JSON
+// out of the project for the build's duration — if they don't exist on disk
+// at all, nothing can leak them, regardless of which process touches them.
 const seedBackupPath = path.join(os.tmpdir(), `budget-data-export.buildbak.${Date.now()}.json`);
+const dataBackupPath = path.join(os.tmpdir(), `budget-ledger-data-buildbak-${Date.now()}`);
 const scratchDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "budget-ledger-build-data-"));
 const seedWasPresent = fs.existsSync(seedFilePath);
+const realDataWasPresent = fs.existsSync(realDataDir);
 
 try {
   // Next's file tracer only copies the .node binary + JS that better-sqlite3
@@ -64,6 +71,10 @@ try {
     fs.renameSync(seedFilePath, seedBackupPath);
     console.log(`(build safety) moved budget-data-export.json out of the project for the build`);
   }
+  if (realDataWasPresent) {
+    fs.renameSync(realDataDir, dataBackupPath);
+    console.log(`(build safety) moved data/ out of the project for the build`);
+  }
 
   console.log("\n=== 2/6: next build (standalone output) ===");
   try {
@@ -72,6 +83,11 @@ try {
     if (seedWasPresent) {
       fs.renameSync(seedBackupPath, seedFilePath);
       console.log("(build safety) restored budget-data-export.json");
+    }
+    if (realDataWasPresent) {
+      fs.rmSync(realDataDir, { recursive: true, force: true }); // remove any stray dir the build created
+      fs.renameSync(dataBackupPath, realDataDir);
+      console.log("(build safety) restored data/");
     }
     fs.rmSync(scratchDataDir, { recursive: true, force: true });
   }
