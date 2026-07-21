@@ -1,36 +1,46 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Budget Ledger
 
-## Getting Started
+A personal budgeting web app: bills, credit cards, transactions, pay schedule, a "where it goes"
+allocator, debt payoff and savings growth projections, and a day-by-day cash-flow forecast. SQLite
+for local persistence, optional read-only Plaid bank sync.
 
-First, run the development server:
+## Setup
 
 ```bash
+npm install
+npm run seed      # imports budget-data-export.json on first run automatically anyway
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). The database lives at `data/budget-ledger.db`
+and is seeded automatically from `budget-data-export.json` the first time it's created.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Connecting a bank account (optional)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The app works fully on manual/seeded data with no setup. To link a real bank account in Plaid's
+sandbox:
 
-## Learn More
+1. Sign up free at [dashboard.plaid.com](https://dashboard.plaid.com) and grab your sandbox
+   `client_id` and `secret`.
+2. Copy `.env.local.example` to `.env.local` and fill in `PLAID_CLIENT_ID`, `PLAID_SECRET`,
+   `PLAID_ENV=sandbox`.
+3. Generate an encryption key for the stored access token: `npm run gen-key`, and add the printed
+   value as `ENCRYPTION_KEY` in `.env.local`.
+4. Restart the dev server, go to Settings, and connect.
 
-To learn more about Next.js, take a look at the following resources:
+Bank access is read-only (transactions only) — there is no code path in this app that can move
+money or make payments. See the Settings page for the full security notes on token storage.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Scripts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `npm run dev` — start the dev server
+- `npm run build` / `npm run start` — production build and serve
+- `npm run test` — run the computation-module unit tests (vitest)
+- `npm run seed -- --force` — wipe and reseed the database from `budget-data-export.json`
+- `npm run gen-key` — print a new `ENCRYPTION_KEY`
 
-## Deploy on Vercel
+## Stack
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Next.js (App Router, TypeScript) with API routes as the backend, `better-sqlite3` for storage,
+Tailwind CSS for the dark ledger-style UI, `recharts` for charts, and the `plaid` /
+`react-plaid-link` SDKs for the optional bank connection.
