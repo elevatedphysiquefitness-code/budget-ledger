@@ -14,11 +14,19 @@ interface PlaidStatus {
 export default function SettingsPage() {
   const [status, setStatus] = useState<PlaidStatus | null>(null);
   const [linkToken, setLinkToken] = useState<string | null>(null);
+  const [linkTokenError, setLinkTokenError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   const [lanUrl, setLanUrl] = useState<string | null>(null);
   const [alternateUrls, setAlternateUrls] = useState<string[]>([]);
+
+  const [plaidClientId, setPlaidClientId] = useState("");
+  const [plaidSecret, setPlaidSecret] = useState("");
+  const [plaidEnv, setPlaidEnv] = useState("sandbox");
+  const [credsBusy, setCredsBusy] = useState(false);
+  const [credsError, setCredsError] = useState<string | null>(null);
+  const [showCredsForm, setShowCredsForm] = useState(false);
 
   const [pinConfigured, setPinConfigured] = useState<boolean | null>(null);
   const [currentPin, setCurrentPin] = useState("");
@@ -46,12 +54,19 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    if (status?.configured && !status.linked && !linkToken) {
+    if (status?.configured && !status.linked && !linkToken && !linkTokenError) {
       fetch("/api/plaid/link-token", { method: "POST" })
         .then((r) => r.json())
-        .then((d) => setLinkToken(d.linkToken ?? null));
+        .then((d) => {
+          if (d.linkToken) {
+            setLinkToken(d.linkToken);
+          } else {
+            setLinkTokenError(d.message ?? "Could not prepare the bank connection.");
+          }
+        })
+        .catch(() => setLinkTokenError("Could not prepare the bank connection."));
     }
-  }, [status, linkToken]);
+  }, [status, linkToken, linkTokenError]);
 
   const handleLinkSuccess = async (publicToken: string, institutionName: string | null) => {
     setBusy(true);
@@ -82,9 +97,46 @@ export default function SettingsPage() {
     setMessage(null);
     await fetch("/api/plaid/item", { method: "DELETE" });
     setLinkToken(null);
+    setLinkTokenError(null);
     await loadStatus();
     setBusy(false);
     setMessage("Bank disconnected. Past synced transactions are kept.");
+  };
+
+  const submitCredentials = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCredsError(null);
+    if (!plaidClientId.trim() || !plaidSecret.trim()) {
+      setCredsError("Enter both your Client ID and Secret.");
+      return;
+    }
+    setCredsBusy(true);
+    const res = await fetch("/api/plaid/credentials", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId: plaidClientId, secret: plaidSecret, env: plaidEnv }),
+    });
+    setCredsBusy(false);
+    if (!res.ok) {
+      setCredsError("Could not save those keys.");
+      return;
+    }
+    setPlaidClientId("");
+    setPlaidSecret("");
+    setShowCredsForm(false);
+    setLinkToken(null); // force a fresh link token using the new credentials
+    setLinkTokenError(null);
+    await loadStatus();
+  };
+
+  const changeCredentials = async () => {
+    setCredsBusy(true);
+    await fetch("/api/plaid/credentials", { method: "DELETE" });
+    setCredsBusy(false);
+    setLinkToken(null);
+    setLinkTokenError(null);
+    setShowCredsForm(true);
+    await loadStatus();
   };
 
   const clearPinForm = () => {
@@ -253,31 +305,85 @@ export default function SettingsPage() {
 
         {!status && <p className="text-sm text-muted">Loading…</p>}
 
-        {status && !status.configured && (
-          <p className="text-sm text-muted">
-            Bank not connected — add <code className="font-mono">PLAID_CLIENT_ID</code>,{" "}
-            <code className="font-mono">PLAID_SECRET</code>, and{" "}
-            <code className="font-mono">PLAID_ENV</code> to <code className="font-mono">.env.local</code> to
-            enable. Sign up for a free sandbox account at{" "}
-            <a href="https://dashboard.plaid.com" className="underline" target="_blank" rel="noreferrer">
-              dashboard.plaid.com
-            </a>
-            .
-          </p>
+        {status && (!status.configured || showCredsForm) && (
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-muted">
+              Sign up for a free sandbox account at{" "}
+              <a href="https://dashboard.plaid.com" className="underline" target="_blank" rel="noreferrer">
+                dashboard.plaid.com
+              </a>
+              , then enter your keys below.
+            </p>
+            <form onSubmit={submitCredentials} className="flex flex-col gap-3">
+              <label className="flex flex-col gap-1 text-sm">
+                Client ID
+                <input
+                  value={plaidClientId}
+                  onChange={(e) => setPlaidClientId(e.target.value)}
+                  className="rounded-lg border border-border bg-surface-raised px-3 py-2 font-mono"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-sm">
+                Secret
+                <input
+                  type="password"
+                  value={plaidSecret}
+                  onChange={(e) => setPlaidSecret(e.target.value)}
+                  className="rounded-lg border border-border bg-surface-raised px-3 py-2 font-mono"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-sm">
+                Environment
+                <select
+                  value={plaidEnv}
+                  onChange={(e) => setPlaidEnv(e.target.value)}
+                  className="rounded-lg border border-border bg-surface-raised px-3 py-2"
+                >
+                  <option value="sandbox">Sandbox</option>
+                  <option value="development">Development</option>
+                  <option value="production">Production</option>
+                </select>
+              </label>
+              {credsError && <p className="text-sm text-red">{credsError}</p>}
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={credsBusy}
+                  className="flex-1 rounded-lg bg-accent py-2 text-sm font-medium text-background disabled:opacity-50"
+                >
+                  {credsBusy ? "Saving…" : "Save keys"}
+                </button>
+                {showCredsForm && (
+                  <button
+                    type="button"
+                    onClick={() => setShowCredsForm(false)}
+                    className="flex-1 rounded-lg border border-border py-2 text-sm text-muted"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
         )}
 
-        {status?.configured && !status.linked && (
+        {status?.configured && !showCredsForm && !status.linked && (
           <div className="flex flex-col gap-3">
             <p className="text-sm text-muted">Not connected yet.</p>
-            {linkToken ? (
+            {linkTokenError ? (
+              <p className="text-sm text-red">{linkTokenError}</p>
+            ) : linkToken ? (
               <PlaidLinkButton linkToken={linkToken} onSuccess={handleLinkSuccess} />
             ) : (
               <p className="text-sm text-muted">Preparing secure link…</p>
             )}
+            <button onClick={changeCredentials} disabled={credsBusy} className="text-xs text-muted underline text-left">
+              Change Plaid keys
+            </button>
           </div>
         )}
 
-        {status?.configured && status.linked && (
+        {status?.configured && !showCredsForm && status.linked && (
           <div className="flex flex-col gap-3">
             <div className="text-sm">
               <p>
@@ -303,6 +409,9 @@ export default function SettingsPage() {
                 Disconnect
               </button>
             </div>
+            <button onClick={changeCredentials} disabled={credsBusy} className="text-xs text-muted underline text-left">
+              Change Plaid keys
+            </button>
           </div>
         )}
 
@@ -316,15 +425,14 @@ export default function SettingsPage() {
           capability to move money or make payments.
         </p>
         <p>
-          Your bank credentials are never seen or stored by this app. Only Plaid&apos;s access token is
-          stored, encrypted at rest with AES-256-GCM using a key in your local{" "}
-          <code className="font-mono">.env.local</code> file.
+          Your bank credentials are never seen or stored by this app. Only Plaid&apos;s access token (and
+          your Plaid API secret, if entered above) is stored, encrypted at rest with AES-256-GCM using a
+          key generated automatically on this computer the first time it&apos;s needed.
         </p>
         <p>
-          Anyone with filesystem access to both <code className="font-mono">.env.local</code> and the local
-          database file could decrypt that token — a reasonable trust boundary for a single-user app on your
-          own machine, but worth knowing. There&apos;s no key rotation: regenerating the encryption key
-          means re-linking your bank.
+          Anyone with access to this app&apos;s local data folder could decrypt those — a reasonable trust
+          boundary for a single-user app on your own machine, but worth knowing. There&apos;s no key
+          rotation: resetting the encryption key means re-entering your Plaid keys and re-linking your bank.
         </p>
         <p>
           Phone access uses plain HTTP over your local WiFi, not HTTPS — fine for a trusted home network, but

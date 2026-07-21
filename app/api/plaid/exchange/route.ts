@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getPlaidClient, isPlaidConfigured } from "@/lib/plaid";
+import { extractPlaidErrorMessage, getPlaidClient, isPlaidConfigured } from "@/lib/plaid";
 import { EncryptionKeyMissingError } from "@/lib/crypto";
 import { savePlaidItem, upsertAccount, getPlaidItem } from "@/lib/repositories/plaidItemsRepo";
 
@@ -40,6 +40,9 @@ export async function POST(request: Request) {
     if (error instanceof EncryptionKeyMissingError) {
       return NextResponse.json({ error: "encryption_key_missing", message: error.message }, { status: 500 });
     }
-    throw error;
+    return NextResponse.json(
+      { error: "plaid_error", message: extractPlaidErrorMessage(error) },
+      { status: 502 }
+    );
   }
 }

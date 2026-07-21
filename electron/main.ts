@@ -1,5 +1,6 @@
 import { app, BrowserWindow } from "electron";
 import { spawn, type ChildProcess } from "node:child_process";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
@@ -22,11 +23,26 @@ function resolveServerPath(): string {
   return path.join(__dirname, "..", "..", ".next", "standalone", "server.js");
 }
 
+/** Generated once per install and reused forever after — there's no file for
+ *  a desktop user to hand-edit, so this replaces the .env.local ENCRYPTION_KEY
+ *  step from the web/dev flow. lib/crypto.ts is unchanged: it just reads
+ *  process.env.ENCRYPTION_KEY, which now arrives this way instead. */
+function ensureEncryptionKey(userDataDir: string): string {
+  const keyPath = path.join(userDataDir, "encryption.key");
+  if (fs.existsSync(keyPath)) {
+    return fs.readFileSync(keyPath, "utf-8").trim();
+  }
+  const key = crypto.randomBytes(32).toString("base64");
+  fs.writeFileSync(keyPath, key, { mode: 0o600 });
+  return key;
+}
+
 function startServer(): ChildProcess {
   const serverPath = resolveServerPath();
   const userDataDir = app.getPath("userData");
   const dataDir = path.join(userDataDir, "data");
   fs.mkdirSync(dataDir, { recursive: true });
+  const encryptionKey = ensureEncryptionKey(userDataDir);
 
   const child = spawn(process.execPath, [serverPath], {
     env: {
@@ -38,6 +54,7 @@ function startServer(): ChildProcess {
       // below — only the server's listen address changes.
       HOSTNAME: "0.0.0.0",
       DATA_DIR: dataDir,
+      ENCRYPTION_KEY: encryptionKey,
       NODE_ENV: "production",
     },
     stdio: ["ignore", "pipe", "pipe"],
