@@ -22,13 +22,39 @@ export default function DashboardPage() {
   const [income, setIncome] = useState<PaySchedule | null>(null);
   const [forecast, setForecast] = useState<CashFlowForecastResult | null>(null);
 
+  const [editingBalance, setEditingBalance] = useState(false);
+  const [balanceInput, setBalanceInput] = useState("");
+  const [savingBalance, setSavingBalance] = useState(false);
+
+  const loadBalance = () => fetch("/api/balance").then((r) => r.json()).then(setBalance);
+  const loadForecast = () =>
+    fetch("/api/forecast?horizonDays=30").then((r) => r.json()).then(setForecast);
+
   useEffect(() => {
-    fetch("/api/balance").then((r) => r.json()).then(setBalance);
+    loadBalance();
     fetch("/api/bills").then((r) => r.json()).then(setBills);
     fetch("/api/cards").then((r) => r.json()).then(setCards);
     fetch("/api/income").then((r) => r.json()).then(setIncome);
-    fetch("/api/forecast?horizonDays=30").then((r) => r.json()).then(setForecast);
+    loadForecast();
   }, []);
+
+  const startEditingBalance = () => {
+    setBalanceInput(balance ? String(balance.balance) : "0");
+    setEditingBalance(true);
+  };
+
+  const saveBalance = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingBalance(true);
+    await fetch("/api/balance", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ balance: Number(balanceInput) || 0 }),
+    });
+    setSavingBalance(false);
+    setEditingBalance(false);
+    await Promise.all([loadBalance(), loadForecast()]);
+  };
 
   const upcomingBills = (bills ?? [])
     .filter((b) => !b.paid)
@@ -56,7 +82,43 @@ export default function DashboardPage() {
             {balance?.connected ? "Live" : "Manual · not connected"}
           </span>
         </div>
-        <LedgerAmount value={balance?.balance ?? 0} className="text-3xl" />
+
+        {editingBalance && !balance?.connected ? (
+          <form onSubmit={saveBalance} className="flex items-center gap-2 mt-1">
+            <input
+              type="number"
+              step="0.01"
+              autoFocus
+              value={balanceInput}
+              onChange={(e) => setBalanceInput(e.target.value)}
+              className="flex-1 rounded-lg border border-border bg-surface-raised px-3 py-2 font-mono text-xl"
+            />
+            <button
+              type="submit"
+              disabled={savingBalance}
+              className="rounded-lg bg-accent px-3 py-2 text-sm font-medium text-background disabled:opacity-50"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditingBalance(false)}
+              className="rounded-lg border border-border px-3 py-2 text-sm text-muted"
+            >
+              Cancel
+            </button>
+          </form>
+        ) : balance?.connected ? (
+          <LedgerAmount value={balance?.balance ?? 0} className="text-3xl" />
+        ) : (
+          <button onClick={startEditingBalance} className="flex items-center gap-2 mt-1">
+            <LedgerAmount value={balance?.balance ?? 0} className="text-3xl" />
+            <span className="text-muted text-xs">Edit</span>
+          </button>
+        )}
+        {balance?.connected && (
+          <p className="text-xs text-muted mt-1">Synced from your bank — editing is disabled while connected.</p>
+        )}
       </div>
 
       <Link href="/forecast" className="rounded-xl border border-border bg-surface p-4 block">
