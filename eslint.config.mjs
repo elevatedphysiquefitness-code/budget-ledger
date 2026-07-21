@@ -16,6 +16,14 @@ const eslintConfig = defineConfig([
     "electron/dist/**",
     "dist-electron/**",
   ]),
+  {
+    // electron-builder hook scripts must be plain CommonJS (module.exports),
+    // which is what electron-builder itself requires() at build time.
+    files: ["electron/*.cjs"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

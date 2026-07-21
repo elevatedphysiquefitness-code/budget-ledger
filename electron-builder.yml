@@ -32,9 +32,16 @@ extraResources:
       - "!standalone/budget-data-export.example.json"
       - "!standalone/**/*.db"
       - "!standalone/**/*.db-*"
+afterSign: electron/afterSign.cjs
 mac:
   target: dmg
   category: public.app-category.finance
+  # No paid Apple Developer account — electron-builder skips real signing.
+  # afterSign.cjs ad-hoc re-signs the bundle after extraResources/Info.plist
+  # changes invalidate Electron's own baked-in ad-hoc signature, which is
+  # what caused macOS to report "is damaged and can't be opened" instead of
+  # the normal unidentified-developer prompt.
+  identity: null
 win:
   target: nsis
 nsis:
