@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, shell } from "electron";
 import { spawn, type ChildProcess } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -100,6 +100,14 @@ async function createWindow(): Promise<void> {
       contextIsolation: true,
       nodeIntegration: false,
     },
+  });
+
+  // Without this, target="_blank"/window.open links (e.g. the Plaid sandbox
+  // signup link, the update-available banner) are denied by Electron's
+  // default window-open handling instead of opening in the system browser.
+  mainWindow.webContents.setWindowOpenHandler(({ url: targetUrl }) => {
+    shell.openExternal(targetUrl);
+    return { action: "deny" };
   });
 
   const url = `http://127.0.0.1:${PORT}`;

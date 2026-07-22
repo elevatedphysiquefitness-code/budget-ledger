@@ -15,12 +15,21 @@ interface BalanceInfo {
   connected: boolean;
 }
 
+interface UpdateCheckResult {
+  currentVersion: string;
+  latestVersion: string | null;
+  updateAvailable: boolean;
+  releaseUrl: string | null;
+}
+
 export default function DashboardPage() {
   const [balance, setBalance] = useState<BalanceInfo | null>(null);
   const [bills, setBills] = useState<Bill[] | null>(null);
   const [cards, setCards] = useState<Card[] | null>(null);
   const [income, setIncome] = useState<PaySchedule | null>(null);
   const [forecast, setForecast] = useState<CashFlowForecastResult | null>(null);
+  const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);
+  const [updateDismissed, setUpdateDismissed] = useState(false);
 
   const [editingBalance, setEditingBalance] = useState(false);
   const [balanceInput, setBalanceInput] = useState("");
@@ -36,6 +45,7 @@ export default function DashboardPage() {
     fetch("/api/cards").then((r) => r.json()).then(setCards);
     fetch("/api/income").then((r) => r.json()).then(setIncome);
     loadForecast();
+    fetch("/api/update-check").then((r) => r.json()).then(setUpdateInfo);
   }, []);
 
   const startEditingBalance = () => {
@@ -74,6 +84,25 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title="Budget Ledger" subtitle="Today" />
+
+      {updateInfo?.updateAvailable && !updateDismissed && (
+        <div className="rounded-xl border border-accent/40 bg-accent/10 p-4 flex items-center justify-between gap-3">
+          <p className="text-sm">
+            Version {updateInfo.latestVersion} is available (you have {updateInfo.currentVersion}).{" "}
+            <a href={updateInfo.releaseUrl ?? undefined} target="_blank" rel="noreferrer" className="underline font-medium">
+              Download it
+            </a>
+            .
+          </p>
+          <button
+            onClick={() => setUpdateDismissed(true)}
+            aria-label="Dismiss"
+            className="text-muted hover:text-foreground text-sm shrink-0"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       <div className="rounded-xl border border-border bg-surface p-5">
         <div className="flex items-center justify-between mb-1">
