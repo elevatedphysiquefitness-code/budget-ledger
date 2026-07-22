@@ -12,7 +12,7 @@ import type { AllocationTargets } from "@/types/domain";
 export default function ProjectionsPage() {
   const [allocation, setAllocation] = useState<AllocationTargets | null>(null);
   const [extraPayment, setExtraPayment] = useState<number | null>(null);
-  const [savingsStart, setSavingsStart] = useState(0);
+  const [savingsStart, setSavingsStart] = useState<number | null>(null);
   const [debt, setDebt] = useState<DebtPayoffResult | null>(null);
   const [savings, setSavings] = useState<SavingsProjectionResult | null>(null);
 
@@ -23,7 +23,19 @@ export default function ProjectionsPage() {
         setAllocation(a);
         setExtraPayment(a.extraTowardDebt);
       });
+    fetch("/api/savings-balance")
+      .then((r) => r.json())
+      .then((d) => setSavingsStart(d.balance));
   }, []);
+
+  const updateSavingsStart = (value: number) => {
+    setSavingsStart(value);
+    fetch("/api/savings-balance", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ balance: value }),
+    });
+  };
 
   useEffect(() => {
     if (extraPayment === null) return;
@@ -33,6 +45,7 @@ export default function ProjectionsPage() {
   }, [extraPayment]);
 
   useEffect(() => {
+    if (savingsStart === null) return;
     fetch(`/api/projections/savings?startingBalance=${savingsStart}`)
       .then((r) => r.json())
       .then(setSavings);
@@ -91,8 +104,8 @@ export default function ProjectionsPage() {
               type="number"
               step="0.01"
               className="rounded-lg border border-border bg-surface-raised px-3 py-2 font-mono"
-              value={savingsStart}
-              onChange={(e) => setSavingsStart(Number(e.target.value) || 0)}
+              value={savingsStart ?? 0}
+              onChange={(e) => updateSavingsStart(Number(e.target.value) || 0)}
             />
           </label>
 

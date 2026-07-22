@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { simulateDebtPayoffAvalanche } from "./debtPayoff";
+import { simulateDebtPayoff, simulateDebtPayoffAvalanche } from "./debtPayoff";
 
 describe("simulateDebtPayoffAvalanche", () => {
   it("pays off the higher-APR card first even when its balance is smaller", () => {
@@ -54,5 +54,35 @@ describe("simulateDebtPayoffAvalanche", () => {
     const result = simulateDebtPayoffAvalanche(cards, 100);
     expect(result.debtFreeDate).not.toBeNull();
     expect(result.months[result.months.length - 1].totalBalance).toBe(0);
+  });
+});
+
+describe("simulateDebtPayoff snowball strategy", () => {
+  it("pays off the smaller balance first, even at a lower APR", () => {
+    const cards = [
+      { id: 1, name: "Higher APR, bigger balance", balance: 1000, apr: 30 },
+      { id: 2, name: "Lower APR, smaller balance", balance: 500, apr: 10 },
+    ];
+
+    const result = simulateDebtPayoff(cards, 200, {
+      strategy: "snowball",
+      startDate: new Date(2026, 0, 1),
+    });
+
+    const firstZeroMonth = (cardId: number) =>
+      result.months.findIndex((m) => m.balances[cardId] === 0);
+
+    expect(firstZeroMonth(2)).toBeLessThan(firstZeroMonth(1));
+  });
+
+  it("defaults to avalanche behavior when no strategy is given", () => {
+    const cards = [
+      { id: 1, name: "Lower APR, bigger balance", balance: 1000, apr: 10 },
+      { id: 2, name: "Higher APR, smaller balance", balance: 500, apr: 30 },
+    ];
+    const result = simulateDebtPayoff(cards, 200, { startDate: new Date(2026, 0, 1) });
+    const firstZeroMonth = (cardId: number) =>
+      result.months.findIndex((m) => m.balances[cardId] === 0);
+    expect(firstZeroMonth(2)).toBeLessThan(firstZeroMonth(1));
   });
 });

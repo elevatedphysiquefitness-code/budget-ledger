@@ -22,6 +22,8 @@ export interface DebtPayoffResult {
   totalMonths: number;
 }
 
+export type DebtPayoffStrategy = "avalanche" | "snowball";
+
 export interface DebtPayoffOptions {
   /** Minimum-payment floor in dollars, used as a simulation input (not real card terms). */
   minPaymentFloor?: number;
@@ -29,17 +31,20 @@ export interface DebtPayoffOptions {
   minPaymentPercent?: number;
   maxMonths?: number;
   startDate?: Date;
+  /** avalanche = highest APR first (mathematically optimal); snowball = smallest
+   *  balance first (faster early wins, usually costs a bit more interest). */
+  strategy?: DebtPayoffStrategy;
 }
 
 const EPSILON = 0.005;
 
 /**
- * Avalanche method: minimum payments on every card, extra payment applied to
- * whichever card currently carries the highest APR, re-evaluated each month
- * as cards get paid off (waterfalls to the next-highest APR card within the
- * same month if a card zeroes out with extra left over).
+ * Minimum payments on every card every month; the extra payment goes to
+ * whichever card the chosen strategy prioritizes, re-evaluated each month as
+ * cards get paid off (waterfalls to the next card within the same month if
+ * one zeroes out with extra left over).
  */
-export function simulateDebtPayoffAvalanche(
+export function simulateDebtPayoff(
   cards: DebtCard[],
   extraPaymentPerMonth: number,
   options: DebtPayoffOptions = {}
@@ -49,6 +54,7 @@ export function simulateDebtPayoffAvalanche(
     minPaymentPercent = 0.02,
     maxMonths = 600,
     startDate = new Date(),
+    strategy = "avalanche",
   } = options;
 
   const balances = new Map<number, number>(cards.map((c) => [c.id, c.balance]));
@@ -82,10 +88,12 @@ export function simulateDebtPayoffAvalanche(
     }
 
     let extra = extraPaymentPerMonth;
-    const avalancheOrder = [...remainingCards].sort(
-      (a, b) => aprById.get(b.id)! - aprById.get(a.id)!
+    const priorityOrder = [...remainingCards].sort((a, b) =>
+      strategy === "snowball"
+        ? balances.get(a.id)! - balances.get(b.id)!
+        : aprById.get(b.id)! - aprById.get(a.id)!
     );
-    for (const card of avalancheOrder) {
+    for (const card of priorityOrder) {
       if (extra <= 0) break;
       const bal = balances.get(card.id)!;
       if (bal <= EPSILON) continue;
@@ -124,4 +132,13 @@ export function simulateDebtPayoffAvalanche(
     totalInterestPaid: round2(totalInterestPaid),
     totalMonths: months.length,
   };
+}
+
+/** Thin wrapper kept for existing callers (`/api/projections/debt`, `/projections`). */
+export function simulateDebtPayoffAvalanche(
+  cards: DebtCard[],
+  extraPaymentPerMonth: number,
+  options: DebtPayoffOptions = {}
+): DebtPayoffResult {
+  return simulateDebtPayoff(cards, extraPaymentPerMonth, { ...options, strategy: "avalanche" });
 }
