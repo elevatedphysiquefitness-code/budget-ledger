@@ -49,6 +49,15 @@ export function listTransactionsWithRunningBalance(): TransactionWithBalance[] {
   return withBalance.reverse();
 }
 
+/** Direct date-filtered query, decoupled from the running-balance logic above
+ *  (not needed for category aggregation). Inclusive of both bounds. */
+export function listTransactionsInRange(startDate: string, endDate: string): Transaction[] {
+  const rows = getDb()
+    .prepare("SELECT * FROM transactions WHERE date >= @startDate AND date <= @endDate ORDER BY date ASC")
+    .all({ startDate, endDate }) as TransactionRow[];
+  return rows.map(rowToTransaction);
+}
+
 export function getTransaction(id: number): Transaction | undefined {
   const row = getDb().prepare("SELECT * FROM transactions WHERE id = ?").get(id) as
     | TransactionRow

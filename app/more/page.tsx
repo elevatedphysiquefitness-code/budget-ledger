@@ -4,9 +4,11 @@ import PageHeader from "@/components/layout/PageHeader";
 const links = [
   { href: "/income", label: "Pay schedule", description: "Paydays, amount, frequency" },
   { href: "/allocate", label: "Where it goes", description: "Split your leftover income" },
+  { href: "/spending", label: "Spending", description: "See where your money goes by category" },
   { href: "/projections", label: "Projections", description: "Debt payoff & savings growth" },
   { href: "/forecast", label: "Cash-flow forecast", description: "30/60/90-day balance outlook" },
   { href: "/settings", label: "Settings", description: "Bank connection, APY, security" },
+  { href: "/game", label: "Fight!", description: "Take a break — local 2-player fighting game" },
 ];
 
 export default function MorePage() {
